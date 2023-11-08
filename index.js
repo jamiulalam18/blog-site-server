@@ -29,7 +29,6 @@ async function run() {
       const usersCollection = dataset.collection("users");
 
       //auth apis
-      app.post('/jwt')
   
       app.get("/users", async (req, res) => {
         const result = await usersCollection.find().toArray();
