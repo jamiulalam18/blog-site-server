@@ -1,25 +1,28 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const cookieParser = require("cookie-parser");
-const jwt = require("jsonwebtoken");
+// const cookieParser = require("cookie-parser");
+// const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      // 'https://cars-doctor-6c129.web.app',
-      // 'https://cars-doctor-6c129.firebaseapp.com'
-    ],
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin: [
+//       // "http://localhost:5173",
+//       "https://blogverse-jamiulalam18.netlify.app/"
+//     ],
+//     credentials: true,
+//   })
+// );
+// app.use(express.json());
+// app.use(cookieParser());
+
+//middleware
+app.use(cors());
 app.use(express.json());
-app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.idds8so.mongodb.net/?retryWrites=true&w=majority`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -31,27 +34,27 @@ const client = new MongoClient(uri, {
   },
 });
 
-// middlewares
-const logger = (req, res, next) => {
-  console.log("log: info", req.method, req.url);
-  next();
-};
+// // middlewares
+// const logger = (req, res, next) => {
+//   console.log("log: info", req.method, req.url);
+//   next();
+// };
 
-const verifyToken = (req, res, next) => {
-  const token = req?.cookies?.token;
-  // console.log('token in the middleware', token);
-  // no token available
-  if (!token) {
-    return res.status(401).send({ message: "unauthorized access" });
-  }
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({ message: "unauthorized access" });
-    }
-    req.user = decoded;
-    next();
-  });
-};
+// const verifyToken = (req, res, next) => {
+//   const token = req?.cookies?.token;
+//   // console.log('token in the middleware', token);
+//   // no token available
+//   if (!token) {
+//     return res.status(401).send({ message: "unauthorized access" });
+//   }
+//   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+//     if (err) {
+//       return res.status(401).send({ message: "unauthorized access" });
+//     }
+//     req.user = decoded;
+//     next();
+//   });
+// };
 
 async function run() {
   try {
@@ -63,27 +66,27 @@ async function run() {
     const blogsCollection = dataset.collection("blogs");
 
     // auth related api
-    app.post("/jwt", logger, async (req, res) => {
-      const user = req.body;
-      console.log("user for token", user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
-      });
+    // app.post("/jwt", logger, async (req, res) => {
+    //   const user = req.body;
+    //   console.log("user for token", user);
+    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    //     expiresIn: "1h",
+    //   });
 
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "none",
-        })
-        .send({ success: true });
-    });
+    //   res
+    //     .cookie("token", token, {
+    //       httpOnly: true,
+    //       secure: true,
+    //       sameSite: "none",
+    //     })
+    //     .send({ success: true });
+    // });
 
-    app.post("/logout", async (req, res) => {
-      const user = req.body;
-      console.log("logging out", user);
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
-    });
+    // app.post("/logout", async (req, res) => {
+    //   const user = req.body;
+    //   console.log("logging out", user);
+    //   res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    // });
 
     app.get("/topAuthors", async (req, res) => {
       const result = await blogsCollection
