@@ -1,24 +1,9 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-// const cookieParser = require("cookie-parser");
-// const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
-
-// middleware
-// app.use(
-//   cors({
-//     origin: [
-//       // "http://localhost:5173",
-//       "https://blogverse-jamiulalam18.netlify.app/"
-//     ],
-//     credentials: true,
-//   })
-// );
-// app.use(express.json());
-// app.use(cookieParser());
 
 //middleware
 app.use(cors());
@@ -34,28 +19,6 @@ const client = new MongoClient(uri, {
   },
 });
 
-// // middlewares
-// const logger = (req, res, next) => {
-//   console.log("log: info", req.method, req.url);
-//   next();
-// };
-
-// const verifyToken = (req, res, next) => {
-//   const token = req?.cookies?.token;
-//   // console.log('token in the middleware', token);
-//   // no token available
-//   if (!token) {
-//     return res.status(401).send({ message: "unauthorized access" });
-//   }
-//   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-//     if (err) {
-//       return res.status(401).send({ message: "unauthorized access" });
-//     }
-//     req.user = decoded;
-//     next();
-//   });
-// };
-
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -64,29 +27,6 @@ async function run() {
 
     const usersCollection = dataset.collection("users");
     const blogsCollection = dataset.collection("blogs");
-
-    // auth related api
-    // app.post("/jwt", logger, async (req, res) => {
-    //   const user = req.body;
-    //   console.log("user for token", user);
-    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-    //     expiresIn: "1h",
-    //   });
-
-    //   res
-    //     .cookie("token", token, {
-    //       httpOnly: true,
-    //       secure: true,
-    //       sameSite: "none",
-    //     })
-    //     .send({ success: true });
-    // });
-
-    // app.post("/logout", async (req, res) => {
-    //   const user = req.body;
-    //   console.log("logging out", user);
-    //   res.clearCookie("token", { maxAge: 0 }).send({ success: true });
-    // });
 
     app.get("/topAuthors", async (req, res) => {
       const result = await blogsCollection
@@ -112,7 +52,6 @@ async function run() {
         .toArray();
       const authorsWithMoreThan3Blogs = result.map((author) => author._id);
 
-      console.log("Authors with more than 3 blogs:", authorsWithMoreThan3Blogs);
       res.send(result);
     });
 
@@ -123,21 +62,18 @@ async function run() {
     });
 
     app.get("/users/:id", async (req, res) => {
-      console.log("/users/:id");
       const id = req.params.id;
       const result = await usersCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
     app.get("/usersByEmail/:email", async (req, res) => {
-      console.log("/usersByEmail/:email");
       const email = req.params.email;
       const result = await usersCollection.findOne({ email: email });
       res.send(result);
     });
 
     app.post("/users", async (req, res) => {
-      console.log("/users");
       const user = req.body;
       const result = await usersCollection.insertOne(user);
       res.send(result);
@@ -152,28 +88,24 @@ async function run() {
     app.patch("/addToWishList/:id", async (req, res) => {
       const id = req.params.id;
       const blogId = req.body.blogId;
-      console.log(blogId);
 
       const result = await usersCollection.updateOne(
         { _id: new ObjectId(id) },
         { $addToSet: { wishlist: blogId } },
         { upsert: true }
       );
-      console.log(result);
       res.send(result);
     });
 
     app.patch("/removeFromWishList/:id", async (req, res) => {
       const id = req.params.id;
       const blogId = req.body.blogId;
-      console.log(blogId);
 
       const result = await usersCollection.updateOne(
         { _id: new ObjectId(id) },
         { $pull: { wishlist: blogId } },
         { upsert: true }
       );
-      // console.log(result);
       res.send(result);
     });
 
@@ -198,31 +130,32 @@ async function run() {
 
     app.get("/blogsByAuthor/:id", async (req, res) => {
       const id = req.params.id;
-      const result = await blogsCollection.find({ author_id: new ObjectId(id) }).toArray();
+      const result = await blogsCollection
+        .find({ author_id: new ObjectId(id) })
+        .toArray();
 
-      console.log(result);
       res.send(result);
     });
-    
 
     app.get("/featuredBlogs", async (req, res) => {
       // Aggregate to find 6 blogs with the longest main_text
 
-      const result = await blogsCollection.aggregate([
-      {
-        $project: {
-          _id: 1,
-          wordCount: { $size: { $split: ['$main_post', ' '] } },
-        },
-      },
-      {
-        $sort: { wordCount: -1 },
-      },
-      {
-        $limit: 10,
-      },
-    ]).toArray();
-      console.log("Top 10 blogs with the longest main_text:", result);
+      const result = await blogsCollection
+        .aggregate([
+          {
+            $project: {
+              _id: 1,
+              wordCount: { $size: { $split: ["$main_post", " "] } },
+            },
+          },
+          {
+            $sort: { wordCount: -1 },
+          },
+          {
+            $limit: 10,
+          },
+        ])
+        .toArray();
       res.send(result);
     });
 
@@ -373,7 +306,6 @@ async function run() {
           post_tags_arr: updatedBlog.post_tags_arr,
         },
       };
-      console.log(blog);
 
       const result = await blogsCollection.updateOne(filter, blog, options);
       res.send(result);
