@@ -85,6 +85,34 @@ async function run() {
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
 
+    app.get("/topAuthors", async (req, res) => {
+      const result = await blogsCollection
+        .aggregate([
+          {
+            $group: {
+              _id: "$author_id",
+              blogCount: { $sum: 1 },
+            },
+          },
+          {
+            $match: {
+              blogCount: { $gt: 2 },
+            },
+          },
+          {
+            $project: {
+              _id: 1, // Include author_id in the result
+              blogCount: 1, // Include the count of blogs
+            },
+          },
+        ])
+        .toArray();
+      const authorsWithMoreThan3Blogs = result.map((author) => author._id);
+
+      console.log("Authors with more than 3 blogs:", authorsWithMoreThan3Blogs);
+      res.send(result);
+    });
+
     //user related
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
@@ -118,6 +146,34 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/addToWishList/:id", async (req, res) => {
+      const id = req.params.id;
+      const blogId = req.body.blogId;
+      console.log(blogId);
+
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $addToSet: { wishlist: blogId } },
+        { upsert: true }
+      );
+      console.log(result);
+      res.send(result);
+    });
+
+    app.patch("/removeFromWishList/:id", async (req, res) => {
+      const id = req.params.id;
+      const blogId = req.body.blogId;
+      console.log(blogId);
+
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $pull: { wishlist: blogId } },
+        { upsert: true }
+      );
+      // console.log(result);
+      res.send(result);
+    });
+
     app.get("/getAuthorNameImg/:id", async (req, res) => {
       const id = req.params.id;
       const result = await usersCollection.findOne(
@@ -134,6 +190,36 @@ async function run() {
     app.get("/blogs/:id", async (req, res) => {
       const id = req.params.id;
       const result = await blogsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    app.get("/blogsByAuthor/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await blogsCollection.find({ author_id: new ObjectId(id) }).toArray();
+
+      console.log(result);
+      res.send(result);
+    });
+    
+
+    app.get("/featuredBlogs", async (req, res) => {
+      // Aggregate to find 6 blogs with the longest main_text
+
+      const result = await blogsCollection.aggregate([
+      {
+        $project: {
+          _id: 1,
+          wordCount: { $size: { $split: ['$main_post', ' '] } },
+        },
+      },
+      {
+        $sort: { wordCount: -1 },
+      },
+      {
+        $limit: 10,
+      },
+    ]).toArray();
+      console.log("Top 10 blogs with the longest main_text:", result);
       res.send(result);
     });
 
@@ -244,6 +330,16 @@ async function run() {
       }
     });
 
+    app.get("/recentBlogs", async (req, res) => {
+      // Find the recent 6 items, sort by createdAt in descending order
+      const recentItems = await blogsCollection
+        .find({})
+        .sort({ timePosted: -1 })
+        .limit(6)
+        .toArray();
+      res.send(recentItems);
+    });
+
     app.post("/blogs", async (req, res) => {
       const author_id = req.body.author_id;
       const new_post = {
@@ -252,6 +348,31 @@ async function run() {
         author_id: new ObjectId(author_id),
       };
       const result = await blogsCollection.insertOne(new_post);
+      res.send(result);
+    });
+
+    app.patch("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedBlog = req.body;
+
+      const blog = {
+        $set: {
+          author_id: new ObjectId(updatedBlog.author_id),
+          post_category: updatedBlog.post_category,
+          post_title: updatedBlog.post_title,
+          thumbnail: updatedBlog.thumbnail,
+          main_img: updatedBlog.main_img,
+          short_description: updatedBlog.short_description,
+          main_post: updatedBlog.main_post,
+          main_post_Style: updatedBlog.main_post_Style,
+          post_tags_arr: updatedBlog.post_tags_arr,
+        },
+      };
+      console.log(blog);
+
+      const result = await blogsCollection.updateOne(filter, blog, options);
       res.send(result);
     });
 
